@@ -15,8 +15,8 @@
   .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .header-logo { height: 100px; width: auto; flex-shrink: 0; }
   .header-titles { flex: 1; }
-  .header-titles h1 { margin: 0; font-size: 1.3rem; }
-  .header-titles p { margin: 2px 0 0; color: #3A3A3A; font-size: .85rem; }
+  .header-titles h1 { margin: 0; font-size: 1.3rem; line-height: 1.15; }
+  .header-titles p { margin: 0; color: #3A3A3A; font-size: .85rem; line-height: 1.2; }
   .refresh-btn { background: none; border: 1px solid #DDD; border-radius: 4px; width: 36px; height: 36px; cursor: pointer; color: #000091; font-size: 1rem; flex-shrink: 0; }
   .refresh-btn:hover { background: #F6F6F6; }
 
@@ -101,7 +101,7 @@
   <div class="header-inner">
     <img class="header-logo" src="https://upload.wikimedia.org/wikipedia/commons/3/30/Logo_ministere.png" alt="Logo Ministère">
     <div class="header-titles">
-      <h1 onclick="goLevel(1)" style="cursor:pointer;">Annuaire des établissements</h1>
+      <h1 onclick="goLevel(1)" style="cursor:pointer;">Annuaire des établissements enseignement agricole</h1>
       <p>DRAAF-SRFD Occitanie</p>
     </div>
     <button id="refreshBtn" class="refresh-btn" title="Actualiser"><i class="ri-refresh-line"></i></button>
