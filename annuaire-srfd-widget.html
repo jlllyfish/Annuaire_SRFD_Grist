@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Annuaire DSFR - Widget Grist</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.13.1/dist/dsfr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css">
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Marianne", arial, sans-serif; background: #fff; color: #161616; }
+
+  .header-band { background: #fff; border-bottom: 1px solid #E5E5E5; padding: 16px 24px; }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .header-logo { height: 100px; width: auto; flex-shrink: 0; }
+  .header-titles { flex: 1; }
+  .header-titles h1 { margin: 0; font-size: 1.3rem; }
+  .header-titles p { margin: 2px 0 0; color: #3A3A3A; font-size: .85rem; }
+  .refresh-btn { background: none; border: 1px solid #DDD; border-radius: 4px; width: 36px; height: 36px; cursor: pointer; color: #000091; font-size: 1rem; flex-shrink: 0; }
+  .refresh-btn:hover { background: #F6F6F6; }
+
+  .filters-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  #deptSel { border: 1px solid #CCC; border-radius: 4px; padding: 8px 10px; font-size: .85rem; font-family: inherit; background: #fff; color: #161616; flex: 1 1 160px; }
+  .searchbar { display: flex; flex: 2 1 260px; max-width: 420px; }
+  .searchbar input { flex: 1; min-width: 0; border: none; outline: none; background: #EEEEEE; padding: 8px 12px; font-size: .9rem; font-family: inherit; color: #161616; }
+  .searchbar input::placeholder { color: #666; font-style: italic; }
+  .searchbar button { flex-shrink: 0; width: 42px; border: none; background: #000091; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .searchbar button:hover { background: #1212FF; }
+  .searchbar button i { font-size: 18px; }
+  .segmented { display: flex; border: 1px solid #CCC; border-radius: 4px; overflow: hidden; flex-shrink: 0; }
+  .seg-btn { border: none; border-right: 1px solid #CCC; background: #fff; padding: 8px 14px; font-size: .85rem; font-family: inherit; cursor: pointer; color: #161616; }
+  .seg-btn:last-child { border-right: none; }
+  .seg-btn.active { background: #000091; color: #fff; }
+
+  main { padding: 20px 24px 40px; }
+  .loading, .noresult, .err { color: #3A3A3A; font-size: .9rem; padding: 20px 4px; }
+  .err { color: #CE0500; }
+  .copyable { cursor: pointer; border-bottom: 1px dotted #929292; }
+  .copyable.copied { color: #18753C; border-bottom-color: #18753C; }
+  .tel-link { color: inherit; text-decoration: none; border-bottom: 1px dotted #929292; }
+
+  .fil { font-size: .85rem; margin-bottom: 14px; color: #3A3A3A; }
+  .fil button { background: none; border: none; color: #000091; cursor: pointer; font-size: .85rem; padding: 0; text-decoration: underline; }
+  .fil span.sep { margin: 0 6px; color: #929292; }
+
+  .h1 { font-size: 1.2rem; font-weight: 700; margin: 0 0 3px; }
+  .sub { font-size: .85rem; color: #3A3A3A; margin: 0 0 16px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .tuile { border: 1px solid #E5E5E5; padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 7px; }
+  .tuile.static { cursor: default; }
+  .tuile:not(.static):hover { background: #F6F6F6; }
+  .tag { font-size: .72rem; background: #EEE; padding: 2px 9px; width: fit-content; }
+  .tag-statut { font-size: .62rem; padding: 1px 8px; border-radius: 999px; width: fit-content; font-weight: 400; }
+  .tag-statut.public { background: #000091; color: #fff; }
+  .tag-statut.prive { background: #E3E3FD; color: #000091; }
+  .tagrow { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+  .ttitle { color: #000091; font-weight: 700; font-size: .95rem; line-height: 1.2rem; min-height: 2.4rem; display: flex; align-items: flex-end; border-bottom: 2px solid #000091; padding-bottom: 2px; width: fit-content; }
+  .ttitle.plain { border-bottom: none; padding-bottom: 0; }
+  .meta { font-size: .8rem; color: #3A3A3A; display: flex; align-items: center; gap: 5px; }
+  .meta i { color: #000091; font-size: 14px; }
+  .rne { font-size: .7rem; background: #E3E3FD; color: #000091; padding: 2px 9px; width: fit-content; display: flex; align-items: center; gap: 4px; }
+
+  .cbox { background: #F6F6F6; border: 1px solid #E5E5E5; padding: 12px 16px; margin-bottom: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .cbox .lbl { font-size: .72rem; letter-spacing: .03em; color: #000091; font-weight: 700; text-transform: uppercase; }
+  .pers { display: flex; flex-wrap: wrap; gap: 14px; font-size: .82rem; color: #3A3A3A; padding-top: 7px; border-top: 1px solid #E0E0E0; }
+  .pers:first-of-type { border-top: none; padding-top: 0; }
+  .pers span { display: flex; align-items: center; gap: 4px; }
+  .pers i { color: #000091; font-size: 15px; }
+  .pers .nom { color: #161616; }
+  .p-nom { font-weight: 600; }
+  .p-prenom { font-weight: 400; }
+
+  .persmini { font-size: .76rem; border-top: 1px solid #E5E5E5; padding-top: 7px; margin-top: 3px; display: flex; flex-direction: column; gap: 3px; color: #3A3A3A; }
+  .persmini .pline { display: flex; align-items: center; gap: 5px; }
+  .persmini .pfonc { padding-left: 18px; }
+  .persmini i { color: #000091; font-size: 13px; }
+
+  .results { display: flex; flex-direction: column; }
+  .result { display: flex; align-items: center; gap: 10px; padding: 11px 8px; border-bottom: 1px solid #F0F0F0; cursor: pointer; }
+  .result:hover { background: #F6F6F6; }
+  .result i { color: #000091; font-size: 17px; }
+  .result .lbl { font-weight: 700; font-size: .88rem; }
+  .result .sub2 { color: #3A3A3A; font-size: .78rem; margin-left: 2px; }
+  .result .tt { margin-left: auto; font-size: .68rem; background: #EEE; padding: 2px 9px; color: #3A3A3A; white-space: nowrap; }
+
+  .meta a, .pers a, .persmini a { color: inherit; text-decoration: none; }
+  .meta a:hover, .pers a:hover, .persmini a:hover { text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    .header-inner { flex-wrap: wrap; }
+    main { padding: 16px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header-band">
+  <div class="header-inner">
+    <img class="header-logo" src="https://upload.wikimedia.org/wikipedia/commons/3/30/Logo_ministere.png" alt="Logo Ministère">
+    <div class="header-titles">
+      <h1 onclick="goLevel(1)" style="cursor:pointer;">Annuaire des établissements</h1>
+      <p>DRAAF-SRFD Occitanie</p>
+    </div>
+    <button id="refreshBtn" class="refresh-btn" title="Actualiser"><i class="ri-refresh-line"></i></button>
+  </div>
+  <div class="filters-row">
+    <select id="deptSel"><option value="">Tous départements</option></select>
+    <div class="segmented">
+      <button class="seg-btn active" data-statut="">Tous</button>
+      <button class="seg-btn" data-statut="Public">Public</button>
+      <button class="seg-btn" data-statut="Privé">Privé</button>
+    </div>
+    <div class="searchbar"><input id="q" type="text" placeholder="Rechercher un nom ou un établissement"><button id="searchBtn" type="button"><i class="ri-search-line"></i></button></div>
+  </div>
+</div>
+
+<main id="area"><p class="loading">Chargement des données…</p></main>
+
+<script>
+// Noms des 4 tables Grist : à vérifier/ajuster sur la page "Données brutes" si besoin.
+const TABLES = {
+  EPLEFPA: "Etablissements",
+  CENTRES: "Centres_Constitutifs",
+  SITES: "Sites",
+  CONTACTS: "Contacts"
+};
+
+let DATA = [];
+let INDEX = [];
+let state = { level: 1 };
+
+grist.ready({ requiredAccess: "full" });
+
+function toRows(table) {
+  const keys = Object.keys(table);
+  const n = table.id.length;
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const row = {};
+    keys.forEach(k => row[k] = table[k][i]);
+    rows.push(row);
+  }
+  return rows;
+}
+
+// Gère les deux cas : colonne *_ref convertie en Reference (valeur = rowId Grist, nombre)
+// ou laissée en Texte (valeur = id_XXX métier, ex. "E3").
+function resolveRef(rows, ref, textIdField) {
+  if (ref === null || ref === undefined || ref === "" || ref === 0) return null;
+  if (typeof ref === "number") return rows.find(r => r.id === ref) || null;
+  return rows.find(r => String(r[textIdField]) === String(ref)) || rows.find(r => String(r.id) === String(ref)) || null;
+}
+
+function mapContact(p) {
+  return { civ: p.Civilite || "", nom: p.Nom || "", prenom: p.Prenom || "", fonction: p.Fonction || "", email: p.Email || "", tel: p.Telephone || "" };
+}
+
+async function loadData() {
+  document.getElementById("area").innerHTML = '<p class="loading">Chargement des données…</p>';
+  try {
+    const [eT, cT, sT, pT] = await Promise.all([
+      grist.docApi.fetchTable(TABLES.EPLEFPA),
+      grist.docApi.fetchTable(TABLES.CENTRES),
+      grist.docApi.fetchTable(TABLES.SITES),
+      grist.docApi.fetchTable(TABLES.CONTACTS)
+    ]);
+    const eRows = toRows(eT), cRows = toRows(cT), sRows = toRows(sT), pRows = toRows(pT);
+
+    DATA = eRows.map(e => {
+      const centres = cRows.filter(c => {
+        const parent = resolveRef(eRows, c.Etab_ref, "id_Etab");
+        return parent && parent.id === e.id;
+      }).map(c => {
+        const sites = sRows.filter(s => {
+          const parent = resolveRef(cRows, s.Centre_ref, "id_Centre");
+          return parent && parent.id === c.id;
+        }).map(s => {
+          const siteContacts = pRows.filter(p => p.Niveau === "Site" && (resolveRef(sRows, p.Site_ref, "id_Site") || {}).id === s.id);
+          return {
+            nom: s.Nom_Site, adresse: s.Adresse, cp: s.Code_Postal, ville: s.Ville,
+            tel: s.Telephone, fax: s.Fax, email: s.Email, rne: s.Code_RNE,
+            contacts: siteContacts.map(mapContact)
+          };
+        });
+        const centreContacts = pRows.filter(p => p.Niveau === "Centre" && (resolveRef(cRows, p.Centre_ref, "id_Centre") || {}).id === c.id);
+        return { nom: c.Nom_Centre, type: c.Type_Centre, contacts: centreContacts.map(mapContact), sites };
+      });
+      const eplefpaContacts = pRows.filter(p => p.Niveau === "Etablissement" && (resolveRef(eRows, p.Etab_ref, "id_Etab") || {}).id === e.id);
+      return { nom: e.Nom_Etab, dept: `${e.Departement} (${e.Code_Departement})`, deptCode: e.Code_Departement || "", statut: e.Statut_Etablissement || "Public", reseau: e.Reseau || "", contacts: eplefpaContacts.map(mapContact), centres };
+    });
+
+    buildIndex();
+    populateDeptFilter();
+    renderMain();
+  } catch (err) {
+    document.getElementById("area").innerHTML =
+      `<p class="err">Erreur de chargement : vérifiez les noms de tables dans TABLES (actuellement ${JSON.stringify(TABLES)}). Détail : ${err.message}</p>`;
+  }
+}
+
+function populateDeptFilter() {
+  const sel = document.getElementById("deptSel");
+  const current = sel.value;
+  const depts = [...new Set(DATA.map(e => e.dept))].sort((a, b) => a.localeCompare(b));
+  sel.innerHTML = '<option value="">Tous départements</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join("");
+  if (depts.includes(current)) sel.value = current;
+}
+
+function buildIndex() {
+  INDEX = [];
+  DATA.forEach((e, ei) => {
+    INDEX.push({ type: "Établissement", label: e.nom, sub: e.dept, icon: "ri-government-line", match: (e.nom + " " + e.dept).toLowerCase(), jump: [2, ei] });
+    e.contacts.forEach(p => INDEX.push({ type: "Contact", label: `${p.civ} ${p.nom} ${p.prenom}`, sub: `${p.fonction} — ${e.nom}`, icon: "ri-user-line", match: (p.nom + " " + p.prenom + " " + p.fonction + " " + e.nom).toLowerCase(), jump: [2, ei] }));
+    e.centres.forEach((c, ci) => {
+      INDEX.push({ type: "Centre", label: c.nom, sub: e.nom, icon: "ri-building-line", match: (c.nom + " " + e.nom).toLowerCase(), jump: [3, ei, ci] });
+      c.contacts.forEach(p => INDEX.push({ type: "Contact", label: `${p.civ} ${p.nom} ${p.prenom}`, sub: `${p.fonction} — ${c.nom}`, icon: "ri-user-line", match: (p.nom + " " + p.prenom + " " + p.fonction + " " + c.nom).toLowerCase(), jump: [3, ei, ci] }));
+      c.sites.forEach(s => {
+        INDEX.push({ type: "Site", label: s.nom, sub: c.nom, icon: "ri-map-pin-line", match: (s.nom + " " + c.nom + " " + (s.adresse || "")).toLowerCase(), jump: [3, ei, ci] });
+        s.contacts.forEach(p => INDEX.push({ type: "Contact", label: `${p.civ} ${p.nom} ${p.prenom}`, sub: `${p.fonction} — ${s.nom}`, icon: "ri-user-line", match: (p.nom + " " + p.prenom + " " + p.fonction + " " + s.nom).toLowerCase(), jump: [3, ei, ci] }));
+      });
+    });
+  });
+}
+
+function goLevel(level, e, c) {
+  state.level = level;
+  if (e !== undefined) state.e = e;
+  if (c !== undefined) state.c = c;
+  document.getElementById("q").value = "";
+  if (level === 1) {
+    document.getElementById("deptSel").value = "";
+    document.querySelectorAll(".seg-btn").forEach(b => b.classList.toggle("active", b.dataset.statut === ""));
+    state.statutFilter = "";
+  }
+  renderMain();
+}
+function jumpToIndex(i) { goLevel.apply(null, INDEX[i].jump); }
+
+const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+function escAttr(s) { return String(s).replace(/'/g, "\\'"); }
+function fallbackCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  document.body.removeChild(ta);
+}
+function copyText(ev, el, text) {
+  ev.stopPropagation();
+  const flash = () => { el.classList.add("copied"); setTimeout(() => el.classList.remove("copied"), 1200); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(flash).catch(() => { fallbackCopy(text); flash(); });
+  } else { fallbackCopy(text); flash(); }
+}
+function emailInner(email) {
+  return `<i class="ri-mail-line"></i><span class="copyable" onclick="copyText(event,this,'${escAttr(email)}')">${email}</span>`;
+}
+function telInner(tel) {
+  if (isMobile) return `<i class="ri-phone-line"></i><a class="tel-link" href="tel:${tel.replace(/[^0-9+]/g, "")}" onclick="event.stopPropagation()">${tel}</a>`;
+  return `<i class="ri-phone-line"></i><span class="copyable" onclick="copyText(event,this,'${escAttr(tel)}')">${tel}</span>`;
+}
+function pers(p) {
+  return `<div class="pers"><span class="nom"><i class="ri-user-line"></i>${p.civ} <span class="p-nom">${p.nom}</span> <span class="p-prenom">${p.prenom}</span></span><span><i class="ri-briefcase-line"></i>${p.fonction}</span>${p.email ? `<span>${emailInner(p.email)}</span>` : ""}${p.tel ? `<span>${telInner(p.tel)}</span>` : ""}</div>`;
+}
+function persMini(p) {
+  return `<div class="persmini"><div class="pline"><i class="ri-user-line"></i>${p.civ} <span class="p-nom">${p.nom}</span> <span class="p-prenom">${p.prenom}</span></div><div class="pfonc">${p.fonction}</div>${p.email ? `<div class="pline">${emailInner(p.email)}</div>` : ""}${p.tel ? `<div class="pline">${telInner(p.tel)}</div>` : ""}</div>`;
+}
+
+function renderMain() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  document.getElementById("area").innerHTML = q.length > 0 ? renderResults(q) : renderDrill();
+}
+
+function renderResults(q) {
+  const m = INDEX.map((it, i) => ({ ...it, i })).filter(it => it.match.split(" ").some(w => w.startsWith(q))).slice(0, 12);
+  if (m.length === 0) return '<p class="noresult">Aucun résultat</p>';
+  return '<div class="results">' + m.map(it =>
+    `<div class="result" onclick="jumpToIndex(${it.i})"><i class="${it.icon}"></i><span class="lbl">${it.label}</span><span class="sub2">${it.sub}</span><span class="tt">${it.type}</span></div>`
+  ).join("") + "</div>";
+}
+
+function renderDrill() {
+  let h = '<div class="fil"><button onclick="goLevel(1)">Annuaire</button>';
+  if (state.level >= 2) h += `<span class="sep">›</span><button onclick="goLevel(2,${state.e})">${DATA[state.e].nom}</button>`;
+  if (state.level >= 3) h += `<span class="sep">›</span><span>${DATA[state.e].centres[state.c].nom}</span>`;
+  h += "</div>";
+
+  if (state.level === 1) {
+    const deptVal = document.getElementById("deptSel").value;
+    const statutVal = state.statutFilter || "";
+    const visible = DATA.map((e, i) => ({ e, i }))
+      .filter(o => (!deptVal || o.e.dept === deptVal) && (!statutVal || o.e.statut === statutVal))
+      .sort((a, b) => a.e.deptCode.localeCompare(b.e.deptCode) || a.e.nom.localeCompare(b.e.nom));
+    h += `<p class="h1">${visible.length} Établissements</p><p class="sub">Sélectionnez un établissement, ou cherchez ci-dessus</p><div class="grid">`;
+    visible.forEach(({ e, i }) => {
+      const dir = e.contacts[0];
+      const statutClass = (e.statut || "Public").toLowerCase().startsWith("priv") ? "prive" : "public";
+      const structureLine = statutClass === "prive"
+        ? `<span class="meta"><i class="ri-links-line"></i>${e.reseau || "Privé"}</span>`
+        : `<span class="meta"><i class="ri-building-2-line"></i>${e.centres.length} centres constitutifs</span>`;
+      h += `<div class="tuile" onclick="goLevel(2,${i})"><div class="tagrow"><span class="tag">${e.dept}</span><span class="tag-statut ${statutClass}">${e.statut}</span></div><span class="ttitle">${e.nom}</span>${structureLine}${dir ? `<span class="meta"><i class="ri-user-line"></i><span class="p-nom">${dir.nom}</span> <span class="p-prenom">${dir.prenom}</span></span>` : ""}</div>`;
+    });
+    h += "</div>";
+  } else if (state.level === 2) {
+    const e = DATA[state.e];
+    h += `<div class="cbox"><span class="lbl">Direction de l'établissement</span>${e.contacts.map(pers).join("")}</div>`;
+    h += `<p class="h1">${e.nom}</p><p class="sub">${e.centres.length} centres constitutifs</p><div class="grid">`;
+    e.centres.forEach((c, i) => {
+      h += `<div class="tuile" onclick="goLevel(3,${state.e},${i})"><span class="tag">${c.type}</span><span class="ttitle">${c.nom}</span><span class="meta"><i class="ri-map-pin-line"></i>${c.sites.length} site(s)</span>${c.contacts.map(persMini).join("")}</div>`;
+    });
+    h += "</div>";
+  } else {
+    const c = DATA[state.e].centres[state.c];
+    h += `<div class="cbox"><span class="lbl">Responsable(s) du centre</span>${c.contacts.map(pers).join("")}</div>`;
+    h += `<p class="h1">${c.nom}</p><p class="sub">${c.sites.length} site(s)</p><div class="grid">`;
+    c.sites.forEach((s) => {
+      h += `<div class="tuile static"><span class="ttitle plain">${s.nom}</span><span class="meta"><i class="ri-map-pin-line"></i>${s.adresse || ""}${s.cp ? ", " + s.cp + " " + (s.ville || "") : ""}</span><span class="meta">${s.tel ? telInner(s.tel) : '<i class="ri-phone-line"></i>—'}</span><span class="meta">${s.email ? emailInner(s.email) : '<i class="ri-mail-line"></i>—'}</span>${s.rne ? `<span class="rne"><i class="ri-file-list-3-line"></i> RNE ${s.rne}</span>` : ""}${s.contacts.map(persMini).join("")}</div>`;
+    });
+    h += "</div>";
+  }
+  return h;
+}
+
+document.getElementById("q").addEventListener("input", renderMain);
+document.getElementById("deptSel").addEventListener("change", () => { state.level = 1; renderMain(); });
+document.querySelectorAll(".seg-btn").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".seg-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  state.statutFilter = btn.dataset.statut;
+  state.level = 1;
+  renderMain();
+}));
+document.getElementById("searchBtn").addEventListener("click", renderMain);
+document.getElementById("refreshBtn").addEventListener("click", loadData);
+loadData();
+</script>
+
+</body>
+</html>
